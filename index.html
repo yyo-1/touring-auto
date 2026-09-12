@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>TOURING AUTO</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f3f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+main{max-width:600px;margin:auto;padding:14px}.card{background:#fff;border-radius:18px;padding:18px;margin:10px 0;box-shadow:0 2px 12px #0001}
+h1{font-size:25px;margin:0 0 4px}.muted{color:#666;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-weight:700;margin:14px 0 6px}input,select,button{width:100%;font-size:17px;padding:13px;border-radius:12px;border:1px solid #ccc;background:#fff}
+button.main{background:#111;color:#fff;border:0;font-weight:700;margin-top:16px}.dirs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.dirs button{font-size:15px;padding:11px}.dirs .on{background:#111;color:#fff}
+#msg{margin-top:12px;font-size:14px}.candidate{border-top:1px solid #eee;padding:13px 0}.candidate:first-child{border-top:0}.big{font-size:25px;font-weight:800}.open{display:block;background:#1877f2;color:#fff;text-align:center;text-decoration:none;padding:12px;border-radius:12px;font-weight:700;margin-top:9px}
+.warn{font-size:12px;color:#777;line-height:1.5}.hide{display:none}
+</style></head><body><main>
+<div class="card"><h1>🏍️ TOURING AUTO</h1><div class="muted">距離と方角から周回ツーリングを自動作成</div>
+<label>出発地</label><input id="start" value="新潟市西区">
+<div class="row"><div><label>目標距離</label><select id="km"><option>100</option><option>150</option><option>200</option><option selected>300</option><option>350</option><option>400</option><option>450</option></select></div>
+<div><label>走り方</label><select id="style"><option value="normal">標準</option><option value="twisty">峠・山道優先</option><option value="scenic">景色優先</option></select></div></div>
+<label>方角</label><div class="dirs" id="dirs">
+<button data-d="315">↖ 北西</button><button data-d="0">↑ 北</button><button data-d="45" class="on">↗ 北東</button>
+<button data-d="270">← 西</button><button data-d="0">◎ おまかせ</button><button data-d="90">→ 東</button>
+<button data-d="225">↙ 南西</button><button data-d="180">↓ 南</button><button data-d="135">↘ 南東</button></div>
+<button class="main" id="go">🚀 コースを自動作成</button><div id="msg"></div></div>
+<div class="card hide" id="out"><h2>候補コース</h2><div id="list"></div>
+<p class="warn">ルートは道路データから自動計算した候補です。実走前に通行止め・冬季閉鎖・二輪規制を確認してください。</p></div>
+<div class="card"><div class="warn"><b>重要：</b>このファイルをiPhoneの「ファイル」から直接開くと、ブラウザの安全制限で外部ルートAPIが動かない場合があります。HTTPSで公開したページから使うと安定します。</div></div>
+</main>
+<script>
+let bearing=45;
+document.querySelectorAll('#dirs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#dirs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');bearing=+b.dataset.d});
+function enc(x){return encodeURIComponent(x)}
+async function geocode(q){
+ const u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+enc(q);
+ const r=await fetch(u,{headers:{Accept:'application/json'}}); if(!r.ok)throw Error('geocode'); const a=await r.json(); if(!a[0])throw Error('住所が見つかりません'); return [+a[0].lon,+a[0].lat]
+}
+function dest(lat,lon,km,deg){const R=6371,d=km/R,a=deg*Math.PI/180,p=lat*Math.PI/180,l=lon*Math.PI/180;const q=Math.asin(Math.sin(p)*Math.cos(d)+Math.cos(p)*Math.sin(d)*Math.cos(a));const l2=l+Math.atan2(Math.sin(a)*Math.sin(d)*Math.cos(p),Math.cos(d)-Math.sin(p)*Math.sin(q));return[l2*180/Math.PI,q*180/Math.PI]}
+async function route(points){const u='https://router.project-osrm.org/route/v1/driving/'+points.map(p=>p.join(',')).join(';')+'?overview=false&steps=false';const r=await fetch(u);if(!r.ok)throw Error('route');return r.json()}
+function gmap(points){const origin=points[0][1]+','+points[0][0];const destination=origin;const mids=points.slice(1,-1).map(p=>p[1]+','+p[0]).join('|');return 'https://www.google.com/maps/dir/?api=1&origin='+enc(origin)+'&destination='+enc(destination)+'&travelmode=driving&waypoints='+enc(mids)}
+document.getElementById('go').onclick=async()=>{
+ const msg=document.getElementById('msg'),out=document.getElementById('out'),list=document.getElementById('list');msg.textContent='出発地を検索中…';out.classList.add('hide');list.innerHTML='';
+ try{
+  const [lon,lat]=await geocode(document.getElementById('start').value), target=+document.getElementById('km').value, style=document.getElementById('style').value;
+  msg.textContent='道路ルートを計算中…';
+  const factors=style==='twisty'?[.30,.34,.38,.42,.46]:style==='scenic'?[.28,.34,.40,.46,.52]:[.30,.35,.40,.45,.50];
+  const candidates=[];
+  for(const f of factors){
+    const a=dest(lat,lon,target*f,bearing-35), b=dest(lat,lon,target*f,bearing+35);
+    const d=await route([[lon,lat],a,b,[lon,lat]]);
+    if(d.code==='Ok') candidates.push({km:d.routes[0].distance/1000,pts:[[lon,lat],a,b,[lon,lat]]});
+  }
+  candidates.sort((a,b)=>Math.abs(a.km-target)-Math.abs(b.km-target));
+  if(!candidates.length)throw Error('ルートが見つかりません');
+  list.innerHTML=candidates.slice(0,3).map((c,i)=>`<div class="candidate"><div class="big">候補${i+1}　${c.km.toFixed(0)} km</div><div class="muted">目標との差 ${Math.abs(c.km-target).toFixed(0)} km</div><a class="open" target="_blank" href="${gmap(c.pts)}">🗺️ Googleマップで開く</a></div>`).join('');
+  out.classList.remove('hide');msg.textContent='完成しました。距離が近い順に表示しています。';
+ }catch(e){msg.textContent='作成できませんでした：'+e.message+'。通信環境または出発地を確認してください。'}
+};
+</script></body></html>
