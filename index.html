@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#111">
-<title>TOURING AUTO v12</title>
+<title>TOURING AUTO v13</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f2f3f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0001}
@@ -22,7 +22,7 @@ button{cursor:pointer}button.main{background:#111;color:#fff;border:0;font-weigh
 <body><main>
 <div class="card">
 <h1>🏍️ TOURING AUTO <span class="version">v12</span></h1>
-<div class="muted">iPhone Google Maps対策・道路上の地点に補正する4区間ナビ版 v12</div>
+<div class="muted">iPhone Google Maps対策・道路上の地点に補正する4区間ナビ版 v13</div>
 <label>出発地</label><input id="start" value="新潟市西区">
 <div class="row"><div><label>目標距離</label><select id="dist"><option>100</option><option>150</option><option>200</option><option selected>300</option><option>350</option><option>400</option><option>450</option></select></div>
 <div><label>走り方</label><select id="style"><option value="normal">標準</option><option value="twisty">峠・山道優先</option><option value="scenic">景色優先</option></select></div></div>
@@ -31,7 +31,7 @@ button{cursor:pointer}button.main{background:#111;color:#fff;border:0;font-weigh
 </div>
 <div class="card" id="results" style="display:none"></div>
 <div class="card warn"><b>v12の改良点</b><br>⑥ v9のGoogle Maps実測（OSRMより短い）を反映し、Google Maps実測242kmを基準に約1.24倍の補正でコースを生成
-⑦ 経由地点をOSRMで最寄りの道路上へスナップしてからGoogle Mapsへ渡します（海上・道路外の地点を防止）<br>
+⑦ 経由地点をOSRMで道路上へスナップし、元地点から大きく離れた海上等の候補を除外します<br>
 ① 道路距離を実測して目標距離に調整<br>
 ② 3経由地の周回コース<br>
 ③ Google Maps公式のapi=1形式<br>④ iPhone版Google Mapsで3経由地が異常化する問題を回避するため、4区間に分割<br>⑤ 各区間は出発地・到着地の2地点だけを渡すため、Google Maps側の経由地処理に依存しない<br>
@@ -44,6 +44,7 @@ directions.forEach(([name,b])=>{const x=document.createElement("button");x.textC
 const rad=x=>x*Math.PI/180,deg=x=>x*180/Math.PI,norm=x=>(x+360)%360;
 function dest(lat,lon,km,b){const R=6371,d=km/R,br=rad(b),p=rad(lat),l=rad(lon),p2=Math.asin(Math.sin(p)*Math.cos(d)+Math.cos(p)*Math.sin(d)*Math.cos(br)),l2=l+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(p),Math.cos(d)-Math.sin(p)*Math.sin(p2));return [deg(l2),deg(p2)]}
 async function geocode(q){const u="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=jp&q="+encodeURIComponent(q),r=await fetch(u,{headers:{"Accept-Language":"ja"}});if(!r.ok)throw Error("出発地の検索に失敗しました");const a=await r.json();if(!a.length)throw Error("出発地が見つかりません");return [Number(a[0].lat),Number(a[0].lon)]}
+function hav(a,b){const R=6371,p1=rad(a[1]),p2=rad(b[1]),dp=rad(b[1]-a[1]),dl=rad(b[0]-a[0]);const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 async function route(points,twisty){
   const c=points.map(p=>p.join(",")).join(";");
   let u="https://router.project-osrm.org/route/v1/driving/"+c+"?overview=false&steps=false";
@@ -53,21 +54,32 @@ async function route(points,twisty){
   const j=await r.json();
   if(j.code!=="Ok"||!j.routes?.length)throw Error("道路ルートが見つかりません");
   const snapped=(j.waypoints||[]).map(w=>w.location);
-  return {km:j.routes[0].distance/1000,snapped:snapped.length===points.length?snapped:points};
+  if(snapped.length!==points.length)throw Error("道路上の地点を取得できません");
+  // OSRMが海上などから遠い地点へスナップした候補を除外
+  for(let i=0;i<points.length;i++){
+    const maxKm=i===0||i===points.length-1?1.5:4.0;
+    if(hav(points[i],snapped[i])>maxKm)throw Error("道路から離れた地点を除外");
+  }
+  return {km:j.routes[0].distance/1000,snapped:snapped};
 }
 function bs(base,i){return [[base-48,base-5,base+48],[base-65,base,base+58],[base-35,base+22,base+72],[base-75,base-18,base+38],[base-55,base+28,base+80]][i].map(norm)}
 function candidate(lat,lon,target,base,style,i,scale){const r=style==="twisty"?[.20,.27,.20]:style==="scenic"?[.21,.29,.21]:[.20,.27,.20],b=bs(base,i),p=[[lon,lat]];for(let k=0;k<3;k++)p.push(dest(lat,lon,target*scale*r[k],b[k]));p.push([lon,lat]);return {p}}
 async function optimize(lat,lon,target,base,style,i){
-  let lo=.55,hi=1.65,best=null;
-  for(let n=0;n<7;n++){
+  let lo=.35,hi=1.65,best=null;
+  for(let n=0;n<8;n++){
     const scale=(lo+hi)/2;
     const c=candidate(lat,lon,target,base,style,i,scale);
-    const rr=await route(c.p,style==="twisty");
-    c.km=rr.km;
-    c.p=rr.snapped;
-    if(!best||Math.abs(c.km-target)<Math.abs(best.km-target))best=c;
-    if(c.km<target)lo=scale;else hi=scale;
+    try{
+      const rr=await route(c.p,style==="twisty");
+      c.km=rr.km;c.p=rr.snapped;
+      if(!best||Math.abs(c.km-target)<Math.abs(best.km-target))best=c;
+      if(c.km<target)lo=scale;else hi=scale;
+    }catch(e){
+      // 海上・道路外なら、まず縮小して陸側へ戻す
+      hi=scale;
+    }
   }
+  if(!best)throw Error("道路上の候補を作成できませんでした");
   return best;
 }
 /* v9: iPhone Google Maps workaround — use two-point legs instead of waypoints.
