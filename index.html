@@ -4,145 +4,52 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#111">
-<title>TOURING AUTO v5</title>
+<title>TOURING AUTO v6</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f2f3f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
-main{max-width:680px;margin:auto;padding:16px}
-.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #00000010}
-h1{font-size:25px;margin:0 0 5px}.muted{color:#666;font-size:13px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-label{display:block;font-weight:700;margin:12px 0 5px}
-input,select,button{width:100%;font-size:16px;padding:12px;border-radius:12px;border:1px solid #ccc;background:#fff}
+*{box-sizing:border-box}body{margin:0;background:#f2f3f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0001}
+h1{font-size:25px;margin:0 0 5px}.muted{color:#666;font-size:13px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-weight:700;margin:12px 0 5px}input,select,button{width:100%;font-size:16px;padding:12px;border-radius:12px;border:1px solid #ccc;background:#fff}
 button{cursor:pointer}button.main{background:#111;color:#fff;border:0;font-weight:800;margin-top:15px}button:disabled{opacity:.5}
 .dirs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.dirs button{font-size:14px;padding:10px 4px}.dirs button.sel{background:#111;color:#fff}
-.msg{margin-top:12px;line-height:1.5}.candidate{border-top:1px solid #eee;padding:18px 0 4px}
-.big{font-size:27px;font-weight:850}.badge{display:inline-block;background:#eee;border-radius:20px;padding:6px 10px;margin:7px 5px 5px 0;font-size:13px}
+.msg{margin-top:12px;line-height:1.5}.candidate{border-top:1px solid #eee;padding:18px 0 4px}.big{font-size:27px;font-weight:850}
+.badge{display:inline-block;background:#eee;border-radius:20px;padding:6px 10px;margin:7px 5px 5px 0;font-size:13px}
 .open{display:block;background:#1877f2;color:#fff;text-decoration:none;text-align:center;font-weight:800;padding:14px;border-radius:13px;margin-top:10px}
 .detail{font-size:13px;color:#555;line-height:1.6}.warn{font-size:12px;color:#777;line-height:1.6}
 .version{display:inline-block;background:#111;color:#fff;border-radius:20px;padding:4px 9px;font-size:12px;margin-left:5px}
 </style>
 </head>
-<body>
-<main>
+<body><main>
 <div class="card">
-<h1>🏍️ TOURING AUTO <span class="version">v5</span></h1>
-<div class="muted">出発地点を座標で固定し、Googleマップへ正確に引き継ぐ版</div>
-
-<label>出発地</label>
-<input id="start" value="新潟市西区">
-
-<div class="row">
-<div><label>目標距離</label>
-<select id="dist"><option>100</option><option>150</option><option>200</option><option selected>300</option><option>350</option><option>400</option><option>450</option></select></div>
-<div><label>走り方</label>
-<select id="style"><option value="normal">標準</option><option value="twisty">峠・山道優先</option><option value="scenic">景色優先</option></select></div>
-</div>
-
+<h1>🏍️ TOURING AUTO <span class="version">v6</span></h1>
+<div class="muted">Googleマップの経路URL方式で、順番を固定して開く版</div>
+<label>出発地</label><input id="start" value="新潟市西区">
+<div class="row"><div><label>目標距離</label><select id="dist"><option>100</option><option>150</option><option>200</option><option selected>300</option><option>350</option><option>400</option><option>450</option></select></div>
+<div><label>走り方</label><select id="style"><option value="normal">標準</option><option value="twisty">峠・山道優先</option><option value="scenic">景色優先</option></select></div></div>
 <label>方向</label><div class="dirs" id="dirs"></div>
-<button class="main" id="go">🚀 コースを自動作成</button>
-<div id="msg" class="msg"></div>
+<button class="main" id="go">🚀 コースを自動作成</button><div id="msg" class="msg"></div>
 </div>
-
 <div class="card" id="results" style="display:none"></div>
-<div class="card warn">
-<b>v5の改良点</b><br>
-① 出発地を検索して緯度・経度を取得<br>
-② 道路距離を実測して目標距離に近づける<br>
-③ Googleマップには地名ではなく「緯度・経度」を直接渡す<br>
-④ 出発地と到着地も同じ座標で固定<br>
-⑤ 3経由地の周回コース<br><br>
-※Googleマップ側の道路条件により最終距離・経路が変わる場合があります。
-</div>
+<div class="card warn"><b>v6の改良点</b><br>
+① 道路距離を実測して目標距離に調整<br>
+② 3経由地の周回コース<br>
+③ Googleマップには出発・経由・到着の座標を順番に直接指定<br>
+④ 出発地と到着地を同一座標に固定<br>
+※Googleマップ側の道路条件により最終距離・経路が変わる場合があります。</div>
 </main>
-
 <script>
 const directions=[["北",0],["北東",45],["東",90],["南東",135],["南",180],["南西",225],["西",270],["北西",315],["おまかせ",null]];
-let selected=45;
-const dirs=document.getElementById("dirs");
-directions.forEach(([name,b])=>{
- const btn=document.createElement("button"); btn.textContent=name;
- if(name==="北東")btn.className="sel";
- btn.onclick=()=>{[...dirs.children].forEach(x=>x.classList.remove("sel"));btn.classList.add("sel");selected=b};
- dirs.appendChild(btn);
-});
-function rad(x){return x*Math.PI/180} function deg(x){return x*180/Math.PI} function norm(x){return (x+360)%360}
-function dest(lat,lon,km,bearing){
- const R=6371,d=km/R,br=rad(bearing),p1=rad(lat),l1=rad(lon);
- const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(br));
- const l2=l1+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));
- return [deg(l2),deg(p2)];
-}
-async function geocode(q){
- const u="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=jp&q="+encodeURIComponent(q);
- const r=await fetch(u,{headers:{"Accept-Language":"ja"}});
- if(!r.ok)throw Error("出発地の検索に失敗しました");
- const a=await r.json(); if(!a.length)throw Error("出発地が見つかりません");
- return [Number(a[0].lat),Number(a[0].lon)];
-}
-async function route(points,twisty){
- const coords=points.map(p=>p.join(",")).join(";");
- let u="https://router.project-osrm.org/route/v1/driving/"+coords+"?overview=false&steps=false";
- if(twisty)u+="&exclude=motorway";
- const r=await fetch(u); if(!r.ok)throw Error("道路ルート計算に失敗しました");
- const j=await r.json(); if(j.code!=="Ok"||!j.routes?.length)throw Error("道路ルートが見つかりません");
- return j.routes[0].distance/1000;
-}
-function bearings(base,i){
- const p=[[base-48,base-5,base+48],[base-65,base,base+58],[base-35,base+22,base+72],[base-75,base-18,base+38],[base-55,base+28,base+80]];
- return p[i].map(norm);
-}
-function radii(style){return style==="twisty" ? [.20,.27,.20] : style==="scenic" ? [.21,.29,.21] : [.20,.27,.20]}
-async function candidate(lat,lon,target,base,style,i,scale){
- const rr=radii(style), bb=bearings(base,i), pts=[[lon,lat]];
- for(let k=0;k<3;k++)pts.push(dest(lat,lon,target*scale*rr[k],bb[k]));
- pts.push([lon,lat]);
- return {km:await route(pts,style==="twisty"),pts};
-}
-async function optimize(lat,lon,target,base,style,i){
- let lo=.55,hi=1.65,best=null;
- for(let n=0;n<7;n++){
-  const mid=(lo+hi)/2,c=await candidate(lat,lon,target,base,style,i,mid);
-  if(!best||Math.abs(c.km-target)<Math.abs(best.km-target))best=c;
-  if(c.km<target)lo=mid;else hi=mid;
- }
- return best;
-}
-/* IMPORTANT: Google Maps receives exact coordinates, not the ambiguous text "西区". */
-function mapsUrl(points){
- const fmt=p=>p[1].toFixed(6)+","+p[0].toFixed(6);
- const origin=fmt(points[0]), destination=fmt(points[points.length-1]);
- const waypoints=points.slice(1,-1).map(fmt).join("|");
- return "https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(origin)+
-   "&destination="+encodeURIComponent(destination)+"&travelmode=driving&waypoints="+encodeURIComponent(waypoints);
-}
-document.getElementById("go").onclick=async()=>{
- const go=document.getElementById("go"),msg=document.getElementById("msg"),box=document.getElementById("results");
- const start=document.getElementById("start").value.trim(),target=Number(document.getElementById("dist").value),style=document.getElementById("style").value;
- const base=selected===null?Math.floor(Math.random()*360):selected;
- if(!start){msg.textContent="出発地を入力してください";return}
- go.disabled=true;box.style.display="none";box.innerHTML="";msg.textContent="📍 出発地を検索中…";
- try{
-  const [lat,lon]=await geocode(start);
-  msg.textContent="🛣️ 実際の道路距離を計算中…";
-  const cs=await Promise.all([0,1,2,3,4].map(i=>optimize(lat,lon,target,base,style,i)));
-  cs.sort((a,b)=>Math.abs(a.km-target)-Math.abs(b.km-target));
-  box.style.display="block";
-  box.innerHTML='<div class="muted">目標距離に近い順。Googleマップには座標を直接渡します。</div>';
-  cs.slice(0,3).forEach((c,i)=>{
-   const err=Math.abs(c.km-target),d=document.createElement("div");d.className="candidate";
-   d.innerHTML='<div class="big">候補'+(i+1)+'　'+c.km.toFixed(1)+' km</div>'+
-    '<div>目標との差 '+err.toFixed(1)+' km</div>'+
-    '<span class="badge">方角 '+(directions.find(x=>x[1]===selected)?.[0]||"おまかせ")+'</span>'+
-    '<span class="badge">'+(style==="twisty"?"峠・山道優先":style==="scenic"?"景色優先":"標準")+'</span>'+
-    '<div class="detail">3経由地・出発地座標固定 → Googleマップへ引き継ぎ</div>'+
-    '<a class="open" target="_blank" rel="noopener" href="'+mapsUrl(c.pts)+'">🗺️ Googleマップで開く</a>';
-   box.appendChild(d);
-  });
-  msg.textContent="✅ 完成しました。候補1が目標距離に最も近いコースです。";
- }catch(e){msg.textContent="⚠️ "+e.message+"。通信状態を確認してもう一度お試しください。"}
- finally{go.disabled=false}
-};
-</script>
-</body>
-</html>
+let selected=45;const dirs=document.getElementById("dirs");
+directions.forEach(([name,b])=>{const x=document.createElement("button");x.textContent=name;if(name==="北東")x.className="sel";x.onclick=()=>{[...dirs.children].forEach(y=>y.classList.remove("sel"));x.classList.add("sel");selected=b};dirs.appendChild(x)});
+const rad=x=>x*Math.PI/180,deg=x=>x*180/Math.PI,norm=x=>(x+360)%360;
+function dest(lat,lon,km,b){const R=6371,d=km/R,br=rad(b),p=rad(lat),l=rad(lon),p2=Math.asin(Math.sin(p)*Math.cos(d)+Math.cos(p)*Math.sin(d)*Math.cos(br)),l2=l+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(p),Math.cos(d)-Math.sin(p)*Math.sin(p2));return [deg(l2),deg(p2)]}
+async function geocode(q){const u="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=jp&q="+encodeURIComponent(q),r=await fetch(u,{headers:{"Accept-Language":"ja"}});if(!r.ok)throw Error("出発地の検索に失敗しました");const a=await r.json();if(!a.length)throw Error("出発地が見つかりません");return [Number(a[0].lat),Number(a[0].lon)]}
+async function route(points,twisty){const c=points.map(p=>p.join(",")).join(";");let u="https://router.project-osrm.org/route/v1/driving/"+c+"?overview=false&steps=false";if(twisty)u+="&exclude=motorway";const r=await fetch(u);if(!r.ok)throw Error("道路ルート計算に失敗しました");const j=await r.json();if(j.code!=="Ok"||!j.routes?.length)throw Error("道路ルートが見つかりません");return j.routes[0].distance/1000}
+function bs(base,i){return [[base-48,base-5,base+48],[base-65,base,base+58],[base-35,base+22,base+72],[base-75,base-18,base+38],[base-55,base+28,base+80]][i].map(norm)}
+function candidate(lat,lon,target,base,style,i,scale){const r=style==="twisty"?[.20,.27,.20]:style==="scenic"?[.21,.29,.21]:[.20,.27,.20],b=bs(base,i),p=[[lon,lat]];for(let k=0;k<3;k++)p.push(dest(lat,lon,target*scale*r[k],b[k]));p.push([lon,lat]);return {p}}
+async function optimize(lat,lon,target,base,style,i){let lo=.55,hi=1.65,best=null;for(let n=0;n<7;n++){const s=(lo+hi)/2,c=candidate(lat,lon,target,base,style,i,s);c.km=await route(c.p,style==="twisty");if(!best||Math.abs(c.km-target)<Math.abs(best.km-target))best=c;if(c.km<target)lo=s;else hi=s}return best}
+/* v6: use Google Maps universal directions URL with ordered coordinates.
+   No ambiguous place-name parsing is used. */
+function mapsUrl(p){const f=x=>x[1].toFixed(6)+","+x[0].toFixed(6);const all=p.map(f);return "https://www.google.com/maps/dir/"+all.map(encodeURIComponent).join("/")+"?travelmode=driving"}
+document.getElementById("go").onclick=async()=>{const go=document.getElementById("go"),msg=document.getElementById("msg"),box=document.getElementById("results"),start=document.getElementById("start").value.trim(),target=+document.getElementById("dist").value,style=document.getElementById("style").value,base=selected===null?Math.floor(Math.random()*360):selected;if(!start)return msg.textContent="出発地を入力してください";go.disabled=true;box.style.display="none";box.innerHTML="";msg.textContent="📍 出発地を検索中…";try{const [lat,lon]=await geocode(start);msg.textContent="🛣️ 道路距離を調整中…";const cs=await Promise.all([0,1,2,3,4].map(i=>optimize(lat,lon,target,base,style,i)));cs.sort((a,b)=>Math.abs(a.km-target)-Math.abs(b.km-target));box.style.display="block";box.innerHTML='<div class="muted">目標距離に近い順。Googleマップには座標を順番に渡します。</div>';cs.slice(0,3).forEach((c,i)=>{const e=Math.abs(c.km-target),d=document.createElement("div");d.className="candidate";d.innerHTML='<div class="big">候補'+(i+1)+'　'+c.km.toFixed(1)+' km</div><div>目標との差 '+e.toFixed(1)+' km</div><span class="badge">方角 '+(directions.find(x=>x[1]===selected)?.[0]||"おまかせ")+'</span><span class="badge">'+(style==="twisty"?"峠・山道優先":style==="scenic"?"景色優先":"標準")+'</span><div class="detail">3経由地・出発地点固定</div><a class="open" target="_blank" rel="noopener" href="'+mapsUrl(c.p)+'">🗺️ Googleマップで開く</a>';box.appendChild(d)});msg.textContent="✅ 完成しました。候補1が目標距離に最も近いコースです。"}catch(e){msg.textContent="⚠️ "+e.message+"。通信状態を確認して再実行してください"}finally{go.disabled=false}};
+</script></body></html>
