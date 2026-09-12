@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#111">
-<title>TOURING AUTO v6</title>
+<title>TOURING AUTO v7</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f2f3f5;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 main{max-width:680px;margin:auto;padding:16px}.card{background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0001}
@@ -22,7 +22,7 @@ button{cursor:pointer}button.main{background:#111;color:#fff;border:0;font-weigh
 <body><main>
 <div class="card">
 <h1>🏍️ TOURING AUTO <span class="version">v6</span></h1>
-<div class="muted">Googleマップの経路URL方式で、順番を固定して開く版</div>
+<div class="muted">Google Maps公式のDirections URL（api=1）で開く版</div>
 <label>出発地</label><input id="start" value="新潟市西区">
 <div class="row"><div><label>目標距離</label><select id="dist"><option>100</option><option>150</option><option>200</option><option selected>300</option><option>350</option><option>400</option><option>450</option></select></div>
 <div><label>走り方</label><select id="style"><option value="normal">標準</option><option value="twisty">峠・山道優先</option><option value="scenic">景色優先</option></select></div></div>
@@ -30,10 +30,10 @@ button{cursor:pointer}button.main{background:#111;color:#fff;border:0;font-weigh
 <button class="main" id="go">🚀 コースを自動作成</button><div id="msg" class="msg"></div>
 </div>
 <div class="card" id="results" style="display:none"></div>
-<div class="card warn"><b>v6の改良点</b><br>
+<div class="card warn"><b>v7の改良点</b><br>
 ① 道路距離を実測して目標距離に調整<br>
 ② 3経由地の周回コース<br>
-③ Googleマップには出発・経由・到着の座標を順番に直接指定<br>
+③ Google Maps公式のapi=1形式で出発・経由・到着の座標を指定<br>
 ④ 出発地と到着地を同一座標に固定<br>
 ※Googleマップ側の道路条件により最終距離・経路が変わる場合があります。</div>
 </main>
@@ -50,6 +50,6 @@ function candidate(lat,lon,target,base,style,i,scale){const r=style==="twisty"?[
 async function optimize(lat,lon,target,base,style,i){let lo=.55,hi=1.65,best=null;for(let n=0;n<7;n++){const s=(lo+hi)/2,c=candidate(lat,lon,target,base,style,i,s);c.km=await route(c.p,style==="twisty");if(!best||Math.abs(c.km-target)<Math.abs(best.km-target))best=c;if(c.km<target)lo=s;else hi=s}return best}
 /* v6: use Google Maps universal directions URL with ordered coordinates.
    No ambiguous place-name parsing is used. */
-function mapsUrl(p){const f=x=>x[1].toFixed(6)+","+x[0].toFixed(6);const all=p.map(f);return "https://www.google.com/maps/dir/"+all.map(encodeURIComponent).join("/")+"?travelmode=driving"}
+function mapsUrl(p){const f=x=>x[1].toFixed(6)+","+x[0].toFixed(6);const origin=f(p[0]),destination=f(p[p.length-1]),waypoints=p.slice(1,-1).map(f).join("|");return "https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(origin)+"&destination="+encodeURIComponent(destination)+"&travelmode=driving&waypoints="+encodeURIComponent(waypoints)}
 document.getElementById("go").onclick=async()=>{const go=document.getElementById("go"),msg=document.getElementById("msg"),box=document.getElementById("results"),start=document.getElementById("start").value.trim(),target=+document.getElementById("dist").value,style=document.getElementById("style").value,base=selected===null?Math.floor(Math.random()*360):selected;if(!start)return msg.textContent="出発地を入力してください";go.disabled=true;box.style.display="none";box.innerHTML="";msg.textContent="📍 出発地を検索中…";try{const [lat,lon]=await geocode(start);msg.textContent="🛣️ 道路距離を調整中…";const cs=await Promise.all([0,1,2,3,4].map(i=>optimize(lat,lon,target,base,style,i)));cs.sort((a,b)=>Math.abs(a.km-target)-Math.abs(b.km-target));box.style.display="block";box.innerHTML='<div class="muted">目標距離に近い順。Googleマップには座標を順番に渡します。</div>';cs.slice(0,3).forEach((c,i)=>{const e=Math.abs(c.km-target),d=document.createElement("div");d.className="candidate";d.innerHTML='<div class="big">候補'+(i+1)+'　'+c.km.toFixed(1)+' km</div><div>目標との差 '+e.toFixed(1)+' km</div><span class="badge">方角 '+(directions.find(x=>x[1]===selected)?.[0]||"おまかせ")+'</span><span class="badge">'+(style==="twisty"?"峠・山道優先":style==="scenic"?"景色優先":"標準")+'</span><div class="detail">3経由地・出発地点固定</div><a class="open" target="_blank" rel="noopener" href="'+mapsUrl(c.p)+'">🗺️ Googleマップで開く</a>';box.appendChild(d)});msg.textContent="✅ 完成しました。候補1が目標距離に最も近いコースです。"}catch(e){msg.textContent="⚠️ "+e.message+"。通信状態を確認して再実行してください"}finally{go.disabled=false}};
 </script></body></html>
