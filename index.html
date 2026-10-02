@@ -108,7 +108,7 @@ async function findPlaces(points){
  const centers=points.map(p=>({lat:p[1],lon:p[0]}));
  const selectors=[];
  for(const p of centers){const a='(around:3500,'+p.lat+','+p.lon+')';selectors.push('node'+a+'[tourism]','way'+a+'[tourism]','relation'+a+'[tourism]','node'+a+'[historic]','way'+a+'[historic]','node'+a+'[amenity~"restaurant|cafe|fast_food"]','way'+a+'[amenity~"restaurant|cafe|fast_food"]');}
- const query='[out:json][timeout:25];('+selectors.join(';')+');out center tags;';
+ const query='[out:json][timeout:25];('+selectors.join(';')+');out center;';
  const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(query)});
  if(!r.ok)throw Error('スポット検索サーバーに接続できません');const data=await r.json();
  const seen=new Set(),items=[];
