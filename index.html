@@ -107,9 +107,14 @@ function allUrl(points){if(!Array.isArray(points)||points.length<5)throw Error('
 async function findPlaces(points){
  const centers=points.map(p=>({lat:p[1],lon:p[0]}));
  const selectors=[];
- for(const p of centers.slice(0,3)){const a='(around:1800,'+p.lat+','+p.lon+')';selectors.push('node'+a+'[tourism]','way'+a+'[tourism]','node'+a+'[historic]','way'+a+'[historic]','node'+a+'[amenity~"restaurant|cafe|fast_food"]','way'+a+'[amenity~"restaurant|cafe|fast_food"]');}
- const query='[out:json][timeout:10];('+selectors.join(';')+');out center tags;';
- const endpoints=['https://overpass.kumi.systems/api/interpreter','https://overpass-api.de/api/interpreter'];
+ for(const p of centers.slice(0,3)){const a='(around:1800,'+p.lat+','+p.lon+')';
+  for(const type of ['node','way','relation']){
+   selectors.push(type+a+'[tourism]');selectors.push(type+a+'[historic]');
+   for(const amenity of ['restaurant','cafe','fast_food'])selectors.push(type+a+'[amenity='+amenity+']');
+  }
+ }
+ const query='[out:json][timeout:20];('+selectors.join(';')+');out center tags;';
+ const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
  let data=null,lastError=null;
  for(const endpoint of endpoints){const controller=new AbortController();let timer;
   try{
